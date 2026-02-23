@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npx vite build",
+  "outputDirectory": "dist/public",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/stk-push", "destination": "/api/stk-push" },
+    { "source": "/api/query", "destination": "/api/query" },
+    { "source": "/api/callback", "destination": "/api/callback" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
