@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const stkPushSchema = z.object({
   phoneNumber: z.string().min(10).max(15),
-  amount: z.number().min(1),
+  amount: z.number().min(81, "Amount must be above 80 KSH"),
 });
 
 export const querySchema = z.object({
