@@ -25,16 +25,6 @@ function getAuthHeaders(): Record<string, string> {
   };
 }
 
-function getTimestamp(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  return `${year}${month}${day}${hours}${minutes}${seconds}`;
-}
 
 async function parsePayflowResponse(response: Response): Promise<{ status: number; data: PayflowResponse }> {
   const text = await response.text();
@@ -64,29 +54,19 @@ export async function registerRoutes(
 
       const { phoneNumber, amount } = parsed.data;
       const headers = getAuthHeaders();
-      const shortcode = process.env.MPESA_SHORTCODE || "174379";
-      const passkey = process.env.MPESA_PASSKEY || "";
-      const timestamp = getTimestamp();
-      const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
-      const callbackUrl = process.env.MPESA_CALLBACK_URL || "https://example.com/callback";
+      const paymentAccountId = Number(process.env.PAYFLOW_ACCOUNT_ID) || 80;
 
-      console.log(`[payflow] STK Push for ${phoneNumber}, amount: ${amount}, shortcode: ${shortcode}`);
+      console.log(`[payflow] STK Push for ${phoneNumber}, amount: ${amount}`);
 
       const response = await fetch(`${BASE_URL}/stkpush.php`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          BusinessShortCode: shortcode,
-          Password: password,
-          Timestamp: timestamp,
-          TransactionType: "CustomerPayBillOnline",
-          Amount: amount,
-          PartyA: phoneNumber,
-          PartyB: shortcode,
-          PhoneNumber: phoneNumber,
-          CallBackURL: callbackUrl,
-          AccountReference: "CourtneyTech",
-          TransactionDesc: "Payment",
+          payment_account_id: paymentAccountId,
+          phone: phoneNumber,
+          amount,
+          reference: "CourtneyTech",
+          description: "Payment via Courtney M-Pesa Pay",
         }),
       });
 
@@ -108,19 +88,12 @@ export async function registerRoutes(
 
       const { checkoutRequestId } = parsed.data;
       const headers = getAuthHeaders();
-      const shortcode = process.env.MPESA_SHORTCODE || "174379";
-      const passkey = process.env.MPESA_PASSKEY || "";
-      const timestamp = getTimestamp();
-      const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
       const response = await fetch(`${BASE_URL}/mpesa/stkpushquery/v1/query`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          BusinessShortCode: shortcode,
-          Password: password,
-          Timestamp: timestamp,
-          CheckoutRequestID: checkoutRequestId,
+          checkout_request_id: checkoutRequestId,
         }),
       });
 

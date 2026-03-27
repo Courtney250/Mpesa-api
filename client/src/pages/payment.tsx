@@ -33,11 +33,9 @@ export default function Payment() {
         body: JSON.stringify({ phoneNumber: phone, amount: Number(amount) }),
       });
       const data = await res.json();
-      if (data.success === false) {
-        setStatusMessage(data.message || "Payment request failed");
-      } else if (data.CheckoutRequestID) {
-        setCheckoutRequestId(data.CheckoutRequestID);
-        setVerifyId(data.CheckoutRequestID);
+      if (data.success && data.checkout_request_id) {
+        setCheckoutRequestId(data.checkout_request_id);
+        setVerifyId(data.checkout_request_id);
         setStatus("Pending");
         setStep("details");
         setStatusMessage("");
