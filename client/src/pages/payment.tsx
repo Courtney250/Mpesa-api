@@ -33,14 +33,16 @@ export default function Payment() {
         body: JSON.stringify({ phoneNumber: phone, amount: Number(amount) }),
       });
       const data = await res.json();
-      if (data.CheckoutRequestID) {
+      if (data.success === false) {
+        setStatusMessage(data.message || "Payment request failed");
+      } else if (data.CheckoutRequestID) {
         setCheckoutRequestId(data.CheckoutRequestID);
         setVerifyId(data.CheckoutRequestID);
         setStatus("Pending");
         setStep("details");
         setStatusMessage("");
       } else {
-        setStatusMessage(data.errorMessage || data.error || "Payment request failed");
+        setStatusMessage(data.message || "Payment request failed");
       }
     } catch (err: any) {
       setStatusMessage(err.message || "Network error");
@@ -60,12 +62,10 @@ export default function Payment() {
         body: JSON.stringify({ checkoutRequestId: verifyId }),
       });
       const data = await res.json();
-      if (data.ResultCode === "0" || data.ResultCode === 0) {
-        setVerifyResult(`Transaction successful! ${data.ResultDesc || ""}`);
-      } else if (data.ResultDesc) {
-        setVerifyResult(data.ResultDesc);
-      } else if (data.errorMessage) {
-        setVerifyResult(data.errorMessage);
+      if (data.success === true) {
+        setVerifyResult(`Transaction successful! ${data.message || ""}`);
+      } else if (data.success === false) {
+        setVerifyResult(data.message || "Verification failed");
       } else {
         setVerifyResult(JSON.stringify(data, null, 2));
       }

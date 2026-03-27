@@ -4,6 +4,12 @@ import { stkPushSchema, querySchema } from "@shared/schema";
 
 const BASE_URL = "https://payflow.top/api/v2";
 
+type PayflowResponse = {
+  success: boolean;
+  message: string;
+  [key: string]: unknown;
+};
+
 function getAuthHeaders(): Record<string, string> {
   const apiKey = process.env.MPESA_CONSUMER_KEY;
   const apiSecret = process.env.MPESA_CONSUMER_SECRET;
@@ -30,6 +36,20 @@ function getTimestamp(): string {
   return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
 
+async function parsePayflowResponse(response: Response): Promise<{ status: number; data: PayflowResponse }> {
+  const text = await response.text();
+  try {
+    const data = JSON.parse(text) as PayflowResponse;
+    const status = data.success === false ? 400 : 200;
+    return { status, data };
+  } catch {
+    return {
+      status: 502,
+      data: { success: false, message: "Invalid response from payment gateway" },
+    };
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -39,7 +59,7 @@ export async function registerRoutes(
     try {
       const parsed = stkPushSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.message });
+        return res.status(400).json({ success: false, message: parsed.error.message });
       }
 
       const { phoneNumber, amount } = parsed.data;
@@ -52,38 +72,30 @@ export async function registerRoutes(
 
       console.log(`[payflow] STK Push for ${phoneNumber}, amount: ${amount}, shortcode: ${shortcode}`);
 
-      const response = await fetch(
-        `${BASE_URL}/mpesa/stkpush/v1/processrequest`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            BusinessShortCode: shortcode,
-            Password: password,
-            Timestamp: timestamp,
-            TransactionType: "CustomerPayBillOnline",
-            Amount: amount,
-            PartyA: phoneNumber,
-            PartyB: shortcode,
-            PhoneNumber: phoneNumber,
-            CallBackURL: callbackUrl,
-            AccountReference: "CourtneyTech",
-            TransactionDesc: "Payment",
-          }),
-        }
-      );
+      const response = await fetch(`${BASE_URL}/stkpush.php`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          BusinessShortCode: shortcode,
+          Password: password,
+          Timestamp: timestamp,
+          TransactionType: "CustomerPayBillOnline",
+          Amount: amount,
+          PartyA: phoneNumber,
+          PartyB: shortcode,
+          PhoneNumber: phoneNumber,
+          CallBackURL: callbackUrl,
+          AccountReference: "CourtneyTech",
+          TransactionDesc: "Payment",
+        }),
+      });
 
-      const text = await response.text();
-      console.log(`[mpesa] STK Push response: ${text.substring(0, 300)}`);
-      try {
-        const data = JSON.parse(text);
-        return res.json(data);
-      } catch {
-        return res.status(502).json({ error: "Invalid response from M-Pesa API" });
-      }
+      const { status, data } = await parsePayflowResponse(response);
+      console.log(`[payflow] STK Push response (${status}):`, data);
+      return res.status(status).json(data);
     } catch (error: any) {
       console.error("STK Push error:", error);
-      return res.status(500).json({ error: error.message || "STK Push failed" });
+      return res.status(500).json({ success: false, message: error.message || "STK Push failed" });
     }
   });
 
@@ -91,7 +103,7 @@ export async function registerRoutes(
     try {
       const parsed = querySchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.message });
+        return res.status(400).json({ success: false, message: parsed.error.message });
       }
 
       const { checkoutRequestId } = parsed.data;
@@ -101,30 +113,23 @@ export async function registerRoutes(
       const timestamp = getTimestamp();
       const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
-      const response = await fetch(
-        `${BASE_URL}/mpesa/stkpushquery/v1/query`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            BusinessShortCode: shortcode,
-            Password: password,
-            Timestamp: timestamp,
-            CheckoutRequestID: checkoutRequestId,
-          }),
-        }
-      );
+      const response = await fetch(`${BASE_URL}/mpesa/stkpushquery/v1/query`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          BusinessShortCode: shortcode,
+          Password: password,
+          Timestamp: timestamp,
+          CheckoutRequestID: checkoutRequestId,
+        }),
+      });
 
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        return res.json(data);
-      } catch {
-        return res.status(502).json({ error: "Invalid response from M-Pesa API" });
-      }
+      const { status, data } = await parsePayflowResponse(response);
+      console.log(`[payflow] Query response (${status}):`, data);
+      return res.status(status).json(data);
     } catch (error: any) {
       console.error("Query error:", error);
-      return res.status(500).json({ error: error.message || "Query failed" });
+      return res.status(500).json({ success: false, message: error.message || "Query failed" });
     }
   });
 
