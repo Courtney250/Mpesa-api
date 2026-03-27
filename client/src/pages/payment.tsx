@@ -20,10 +20,7 @@ export default function Payment() {
 
   async function handlePay() {
     if (!phone || !amount) return;
-    if (Number(amount) <= 80) {
-      setStatusMessage("Amount must be above 80 KSH");
-      return;
-    }
+
     setLoading(true);
     setStatusMessage("Initiating payment request...");
     try {
@@ -122,8 +119,8 @@ export default function Payment() {
                     <Input
                       data-testid="input-amount"
                       id="amount"
-                      placeholder="80"
-                      min={80}
+                      placeholder="Enter amount"
+                      min={1}
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
