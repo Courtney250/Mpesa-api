@@ -33,6 +33,7 @@ async function parsePayflowResponse(response: Response): Promise<{ status: numbe
     const status = data.success === false ? 400 : 200;
     return { status, data };
   } catch {
+    console.error(`[payflow] Non-JSON response (HTTP ${response.status}):`, text.substring(0, 500));
     return {
       status: 502,
       data: { success: false, message: "Invalid response from payment gateway" },
