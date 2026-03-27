@@ -57,12 +57,12 @@ export default function Payment() {
         body: JSON.stringify({ checkoutRequestId: verifyId }),
       });
       const data = await res.json();
-      if (data.success === true) {
-        setVerifyResult(`Transaction successful! ${data.message || ""}`);
-      } else if (data.success === false) {
-        setVerifyResult(data.message || "Verification failed");
+      if (data.success && data.status === "success") {
+        setVerifyResult(`✓ Payment successful!\nTransaction code: ${data.transaction_code || "N/A"}\nAmount: KSH ${data.amount}\nPhone: ${data.phone}`);
+      } else if (data.success && data.status) {
+        setVerifyResult(`Status: ${data.status}\nAmount: KSH ${data.amount}\nPhone: ${data.phone}\n${data.transaction_code ? `Transaction code: ${data.transaction_code}` : "Payment not completed yet"}`);
       } else {
-        setVerifyResult(JSON.stringify(data, null, 2));
+        setVerifyResult(data.message || "Verification failed");
       }
     } catch (err: any) {
       setVerifyResult(err.message || "Verification failed");

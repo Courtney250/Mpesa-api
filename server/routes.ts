@@ -90,7 +90,7 @@ export async function registerRoutes(
       const { checkoutRequestId } = parsed.data;
       const headers = getAuthHeaders();
 
-      const response = await fetch(`${BASE_URL}/mpesa/stkpushquery/v1/query`, {
+      const response = await fetch(`${BASE_URL}/status.php`, {
         method: "POST",
         headers,
         body: JSON.stringify({
