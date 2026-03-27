@@ -2,45 +2,21 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { stkPushSchema, querySchema } from "@shared/schema";
 
-function getBaseUrl(): string {
-  return process.env.MPESA_ENV === "production"
-    ? "https://api.safaricom.co.ke"
-    : "https://sandbox.safaricom.co.ke";
-}
+const BASE_URL = "https://payflow.top/api/v2";
 
-async function getAccessToken(): Promise<string> {
-  const consumerKey = process.env.MPESA_CONSUMER_KEY;
-  const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
+function getAuthHeaders(): Record<string, string> {
+  const apiKey = process.env.MPESA_CONSUMER_KEY;
+  const apiSecret = process.env.MPESA_CONSUMER_SECRET;
 
-  if (!consumerKey || !consumerSecret) {
-    throw new Error("M-Pesa API credentials not configured");
+  if (!apiKey || !apiSecret) {
+    throw new Error("API credentials not configured");
   }
 
-  const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
-  const baseUrl = getBaseUrl();
-
-  console.log(`[mpesa] Getting access token from ${baseUrl}`);
-
-  const response = await fetch(
-    `${baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
-    {
-      headers: { Authorization: `Basic ${auth}` },
-    }
-  );
-
-  const text = await response.text();
-  console.log(`[mpesa] Auth response status: ${response.status}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to get M-Pesa access token: ${text}`);
-  }
-
-  try {
-    const data = JSON.parse(text) as { access_token: string };
-    return data.access_token;
-  } catch {
-    throw new Error(`Invalid response from M-Pesa auth: ${text.substring(0, 200)}`);
-  }
+  return {
+    "X-API-Key": apiKey,
+    "X-API-Secret": apiSecret,
+    "Content-Type": "application/json",
+  };
 }
 
 function getTimestamp(): string {
@@ -67,24 +43,20 @@ export async function registerRoutes(
       }
 
       const { phoneNumber, amount } = parsed.data;
-      const accessToken = await getAccessToken();
-      const baseUrl = getBaseUrl();
+      const headers = getAuthHeaders();
       const shortcode = process.env.MPESA_SHORTCODE || "174379";
       const passkey = process.env.MPESA_PASSKEY || "";
       const timestamp = getTimestamp();
       const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
       const callbackUrl = process.env.MPESA_CALLBACK_URL || "https://example.com/callback";
 
-      console.log(`[mpesa] STK Push to ${baseUrl} for ${phoneNumber}, amount: ${amount}, shortcode: ${shortcode}, passkey length: ${passkey.length}`);
+      console.log(`[payflow] STK Push for ${phoneNumber}, amount: ${amount}, shortcode: ${shortcode}`);
 
       const response = await fetch(
-        `${baseUrl}/mpesa/stkpush/v1/processrequest`,
+        `${BASE_URL}/mpesa/stkpush/v1/processrequest`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             BusinessShortCode: shortcode,
             Password: password,
@@ -123,21 +95,17 @@ export async function registerRoutes(
       }
 
       const { checkoutRequestId } = parsed.data;
-      const accessToken = await getAccessToken();
-      const baseUrl = getBaseUrl();
+      const headers = getAuthHeaders();
       const shortcode = process.env.MPESA_SHORTCODE || "174379";
       const passkey = process.env.MPESA_PASSKEY || "";
       const timestamp = getTimestamp();
       const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
       const response = await fetch(
-        `${baseUrl}/mpesa/stkpushquery/v1/query`,
+        `${BASE_URL}/mpesa/stkpushquery/v1/query`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({
             BusinessShortCode: shortcode,
             Password: password,
