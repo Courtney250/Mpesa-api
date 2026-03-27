@@ -11,11 +11,11 @@ type PayflowResponse = {
 };
 
 function getAuthHeaders(): Record<string, string> {
-  const apiKey = process.env.MPESA_CONSUMER_KEY;
-  const apiSecret = process.env.MPESA_CONSUMER_SECRET;
+  const apiKey = process.env.PAYFLOW_API_KEY;
+  const apiSecret = process.env.PAYFLOW_API_SECRET;
 
   if (!apiKey || !apiSecret) {
-    throw new Error("API credentials not configured");
+    throw new Error("Payflow API credentials not configured");
   }
 
   return {
